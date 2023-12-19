@@ -15,6 +15,9 @@ import matplotlib.pyplot as plt
 
 import pygetwindow as gw
 
+from GetSparkles import GetSparkles
+#from GetSparkles import GetSparkles
+
 
 def get_window_under_cursor():
     x, y = pyautogui.position()
@@ -51,6 +54,7 @@ template = cv2.imread('t2.png')
 h, w, _ = template.shape
 
 bounding_box = {'top': 245, 'left': 1430, 'width': 100 , 'height': 610}
+sparkles_box = {'top':0,'left':868,'width':1052,'height':1080}
 #bounding_box = {'top': 0, 'left': 0, 'width': 2000 , 'height': 2000}
 
 sct = mss()
@@ -117,7 +121,7 @@ quit_btn.pack(padx=0, pady=0)  # Add padding around the button
 quit_btn.config(width=40,height=1,bg="red",fg="yellow")
 
 
-prevFound = True
+prevFound = False
 
 def main_loop():
     global mouse_down,enabled,prevFound,points,bob_height,previous_height,img,template,h,w,tracker
@@ -177,8 +181,8 @@ def main_loop():
         is_in = above_green and below_green
 
 
-        above_green_hits = 0
-        below_green_hits = 0
+        above_white_hits = 0
+        below_white_hits = 0
 
         # "do points above"
         for y_offset in points:
@@ -186,9 +190,7 @@ def main_loop():
             cv2.circle(img,(point[1],point[0]),4,(0,255,255),3)
 
             if np.mean(img[*point]) == 255:
-                above_green_hits -= 1
-            # if color_similarity_to_grey(img[*point]) > grey_threshold:
-            #     above_green_hits += 1
+                above_white_hits += 1
 
 
         #do points below
@@ -197,39 +199,21 @@ def main_loop():
             cv2.circle(img,(point[1],point[0]),4,(0,255,255),3)
             
             if np.mean(img[*point]) == 255:
-                below_green_hits -= 1
+                below_white_hits += 1
+        
+        b = 0
+        #positive difference = more white above the booober = more hold = b needs to be higher
+        difference = above_white_hits - below_white_hits
+        b = (difference * 2.3)
 
-            # if color_similarity_to_grey(img[*point]) > grey_threshold:
-            #     below_green_hits += 1
-        
-        
-        
-        if not is_in:
-            # below green hits = the bar is under the bobber thing
-            # above green hits = the bar is above / there are more white points aboev the boober
-
-            if above_green_hits < below_green_hits:
-                if mouse_down == False:
-                    pyautogui.mouseDown()
-                    mouse_down = True
-            else:
-                if mouse_down == True:
-                    pyautogui.mouseUp()
-                    mouse_down = False
+        if math.sin(time.time() * 16 * math.pi) + b > 0  :
+            if mouse_down == False:
+                pyautogui.mouseDown()
+                mouse_down = True
         else:
-            b = 0
-            #positive difference = more white above the booober = more hold = b needs to be higher
-            difference = above_green_hits - below_green_hits
-            b = (difference * 0.5) + 1.4
-
-            if math.sin(time.time() * 8 * math.pi) + b > 0  :
-                if mouse_down == False:
-                    pyautogui.mouseDown()
-                    mouse_down = True
-            else:
-                if mouse_down == True:
-                    pyautogui.mouseUp()
-                    mouse_down = False
+            if mouse_down == True:
+                pyautogui.mouseUp()
+                mouse_down = False
     else:
         if prevFound:
             time.sleep(0.2)
@@ -237,19 +221,22 @@ def main_loop():
             time.sleep(0.01)
             pyautogui.mouseUp()
         else:
-            time.sleep(4)
-            pyautogui.mouseDown()
-            time.sleep(0.01)
-            pyautogui.mouseUp()
+            sparkle_img = np.array(sct.grab(sparkles_box))
+
+            sparkle_count, newImg = GetSparkles(sparkle_img)
+            print(sparkle_count)
+            if sparkle_count > 11:
+                pyautogui.mouseDown()
+                time.sleep(0.01)
+                pyautogui.mouseUp()
 
         prevFound = False
         
 
         pass
 
-    #cv2.imshow('screen', img)
+    cv2.imshow('screen', img)
     
-    print("poop")
     root.after(10,main_loop)
 
 
